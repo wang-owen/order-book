@@ -28,6 +28,8 @@ Temporary Items
 
 .vscode/*
 
+*.dSYM
+
 # Local History for Visual Studio Code
 .history/
 
