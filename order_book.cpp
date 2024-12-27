@@ -111,36 +111,37 @@ int order_book::num_orders() const {
 
 void order_book::execute_orders() {
   while (!bids.empty() && !asks.empty()) {
-    auto best_bid = bids.rbegin(); // Highest bid
-    auto best_ask = asks.begin();  // Lowest ask
+    auto best_bid = bids.rbegin(); // Best BUY price
+    auto best_ask = asks.begin();  // Best SELL price
 
-    // Lowest ask is greater than highest bid
     if (best_ask->first > best_bid->first) {
       break;
     }
 
-    auto &bid_order = best_bid->second.front();
-    auto &ask_order = best_ask->second.front();
+    auto &buy_queue = best_bid->second;
+    auto &sell_queue = best_ask->second;
 
-    int traded_quantity = std::min(bid_order.quantity, ask_order.quantity);
+    Order &buy_order = buy_queue.front();
+    Order &sell_order = sell_queue.front();
+
+    int traded_quantity = std::min(buy_order.quantity, sell_order.quantity);
+
+    // Process trade
+    buy_order.quantity -= traded_quantity;
+    sell_order.quantity -= traded_quantity;
+
+    if (buy_order.quantity == 0)
+      buy_queue.pop_front();
+    if (sell_order.quantity == 0)
+      sell_queue.pop_front();
+
+    // Clean up empty price levels
+    if (buy_queue.empty())
+      bids.erase(best_bid->first);
+    if (sell_queue.empty())
+      asks.erase(best_ask->first);
+
     std::cout << "Trade: Price " << best_ask->first << " Quantity "
               << traded_quantity << "\n";
-
-    bid_order.quantity -= traded_quantity;
-    ask_order.quantity -= traded_quantity;
-
-    if (bid_order.quantity == 0) {
-      best_bid->second.erase(best_bid->second.begin());
-      if (best_bid->second.empty()) {
-        bids.erase(best_bid->first);
-      }
-    }
-
-    if (ask_order.quantity == 0) {
-      best_ask->second.erase(best_ask->second.begin());
-      if (best_ask->second.empty()) {
-        asks.erase(best_ask->first);
-      }
-    }
   }
 }

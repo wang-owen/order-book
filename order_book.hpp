@@ -20,8 +20,8 @@ public:
   int num_orders() const;
 
 private:
-  std::map<double, std::vector<Order>> bids;
-  std::map<double, std::vector<Order>> asks;
+  std::map<double, std::deque<Order>> bids;
+  std::map<double, std::deque<Order>> asks;
   std::mutex mtx;
 
   void execute_orders();
