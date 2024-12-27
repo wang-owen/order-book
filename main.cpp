@@ -1,41 +1,27 @@
 #include "common.hpp"
-
 #include "order_book.hpp"
+#include "tcp_server.hpp"
 
-#include <chrono>
-#include <unistd.h>
+bool is_valid_port(const std::string &port) {
+  return std::all_of(port.begin(), port.end(),
+                     [](char c) { return std::isdigit(c); });
+}
 
-int main() {
-  using std::cout;
+int main(int argc, char *argv[]) {
+  if (argc != 2) {
+    std::cerr << "Usage: " << argv[0] << " <port>\n";
+    return 1;
+  }
 
-  OrderBook order_book;
+  if (!is_valid_port(argv[1])) {
+    std::cerr << "Invalid port number\n";
+    return 1;
+  }
 
-  order_book.AddOrder(
-      {10, Order::Type::BUY, 10, 10,
-       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())});
-  sleep(1);
-  order_book.AddOrder(
-      {2, Order::Type::BUY, 100, 10,
-       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())});
-  sleep(1);
-  order_book.AddOrder(
-      {31, Order::Type::BUY, 200, 10,
-       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())});
-  sleep(1);
+  unsigned short port = static_cast<unsigned short>(std::atoi(argv[1]));
 
-  order_book.AddOrder(
-      {19, Order::Type::SELL, 101, 10,
-       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())});
-  order_book.AddOrder(
-      {19, Order::Type::SELL, 101, 10,
-       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())});
+  order_book book;
 
-  cout << "\n";
-  order_book.Display();
-  cout << "\n";
-
-  order_book.AddOrder({5, Order::Type::SELL, 50, 10});
-
-  cout << "\n";
-  order_book.Display();
+  tcp_server server(port, book);
+  server.run();
 }
