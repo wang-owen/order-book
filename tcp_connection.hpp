@@ -27,6 +27,7 @@ private:
   tcp::socket socket_;
   std::array<char, 128> buffer_;
   order_book &book_;
+  std::string trader_id_;
 };
 
 #endif
