@@ -2,6 +2,7 @@
 #define ORDER_H
 
 #include <ctime>
+#include <string>
 
 struct Order {
   int id;
@@ -9,6 +10,7 @@ struct Order {
   double price;
   int quantity;
   time_t timestamp;
+  std::string trader_id;
 };
 
 #endif

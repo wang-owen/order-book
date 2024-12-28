@@ -1,4 +1,4 @@
-#include "common.hpp"
+#include "order.hpp"
 #include "order_book.hpp"
 #include "tcp_server.hpp"
 
@@ -23,5 +23,6 @@ int main(int argc, char *argv[]) {
   order_book book;
 
   tcp_server server(port, book);
+  std::cout << "Server started on port " << port << "\n";
   server.run();
 }

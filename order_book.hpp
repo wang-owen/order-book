@@ -3,16 +3,15 @@
 
 #include "order.hpp"
 
-#include <iostream>
+#include <deque>
 #include <map>
 #include <mutex>
 #include <unordered_map>
-#include <vector>
 
 class order_book {
 public:
   std::unordered_map<std::string, std::variant<bool, std::string>>
-  process_order(const std::string &message);
+  process_message(const std::string &message, std::string trader_id);
   void add_order(const Order &order);
   void cancel_order(int id);
   void display();

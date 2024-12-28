@@ -1,43 +1,46 @@
 #include "order_book.hpp"
 
+#include <iostream>
 #include <sstream>
 
 std::unordered_map<std::string, std::variant<bool, std::string>>
-order_book::process_order(const std::string &message) {
-  // Message format: <type> <price> <quantity>
-  std::istringstream iss(message);
-  std::string type;
-  double price;
-  int quantity;
-  std::string timestamp;
+order_book::process_message(const std::string &message, std::string trader_id) {
+  std::string type = message.substr(0, message.find(' '));
 
-  iss >> type >> price >> quantity;
+  // Message format: <BUY, SELL> <price> <quantity> or CANCEL <id>
+  if (type == "BUY" || type == "SELL") {
+    std::istringstream iss(message);
+    double price;
+    int quantity;
 
-  if (iss.fail()) {
-    return {{"success", false}, {"error", "Invalid message format"}};
-  }
+    iss >> type >> price >> quantity;
 
-  Order::Type order_type;
-  if (type == "BUY") {
-    order_type = Order::Type::BUY;
-  } else if (type == "SELL") {
-    order_type = Order::Type::SELL;
+    if (iss.fail()) {
+      return {{"success", false}, {"error", "Invalid message format"}};
+    }
+
+    Order::Type order_type;
+    if (type == "BUY") {
+      order_type = Order::Type::BUY;
+    } else {
+      order_type = Order::Type::SELL;
+    }
+    struct Order order = {num_orders() + 1, order_type,    price,
+                          quantity,         time(nullptr), trader_id};
+
+    std::lock_guard<std::mutex> lock(mtx);
+    add_order(order);
+  } else if (type == "CANCEL") {
+    int id = std::stoi(message.substr(message.find(' ') + 1));
+    std::lock_guard<std::mutex> lock(mtx);
+    cancel_order(id);
   } else {
-    return {{"success", false}, {"error", "Invalid order type"}};
+    return {{"success", false}, {"error", "Invalid message type"}};
   }
-
-  struct Order order = {num_orders() + 1, order_type, price, quantity,
-                        time(nullptr)};
-
-  std::lock_guard<std::mutex> lock(mtx);
-  add_order(order);
-
-  std::cout << "Order: Type " << type << " Price " << price << " Quantity "
-            << quantity << "\n";
 
   display();
 
-  return {{"success", true}, {"error", ""}};
+  return {{"success", true}, {"message", "Order processed"}};
 }
 
 void order_book::add_order(const Order &order) {
@@ -93,7 +96,8 @@ void order_book::display() {
   for (const auto &ask : asks) {
     for (const auto &order : ask.second) {
       std::cout << "Price " << ask.first << " Quantity " << order.quantity
-                << " Time " << order.timestamp << "\n";
+                << " Time " << order.timestamp << " Trader " << order.trader_id
+                << "\n";
     }
   }
 }
