@@ -60,19 +60,12 @@ void tcp_connection::handle_read() {
       std::cout << "Received: " << std::string(buffer_.data(), length) << "\n";
 
       // Process message and get response
-      std::unordered_map<std::string, std::variant<bool, std::string>>
-          response = book_.process_message(std::string(buffer_.data(), length),
-                                           trader_id_);
-
-      std::string message;
-      if (std::get<bool>(response["success"])) {
-        message = std::get<std::string>(response["message"]) + "\n";
-      } else {
-        message = std::get<std::string>(response["error"]) + "\n";
-      }
+      std::string response;
+      book_.process_message(std::string(buffer_.data(), length), trader_id_,
+                            response);
 
       asio::async_write(
-          socket_, asio::buffer(message),
+          socket_, asio::buffer(response),
           [this, self](std::error_code error, std::size_t length) {
             if (error) {
               std::cerr << "Error: " << error.message() << "\n";

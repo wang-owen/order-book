@@ -3,8 +3,9 @@
 #include <iostream>
 #include <sstream>
 
-std::unordered_map<std::string, std::variant<bool, std::string>>
-order_book::process_message(const std::string &message, std::string trader_id) {
+void order_book::process_message(const std::string &message,
+                                 std::string &trader_id,
+                                 std::string &response) {
   std::string type = message.substr(0, message.find(' '));
 
   // Message format: <BUY, SELL> <price> <quantity> or CANCEL <id>
@@ -16,7 +17,8 @@ order_book::process_message(const std::string &message, std::string trader_id) {
     iss >> type >> price >> quantity;
 
     if (iss.fail()) {
-      return {{"success", false}, {"error", "Invalid message format"}};
+      response = "Invalid message format";
+      return;
     }
 
     Order::Type order_type;
@@ -33,14 +35,22 @@ order_book::process_message(const std::string &message, std::string trader_id) {
   } else if (type == "CANCEL") {
     int id = std::stoi(message.substr(message.find(' ') + 1));
     std::lock_guard<std::mutex> lock(mtx);
-    cancel_order(id);
+    if (!cancel_order(id, trader_id)) {
+      response = "Invalid trader ID";
+    }
+  } else if (type == "DISPLAY") {
+    // TODO: Use pass by reference out, string needs to stay alive until sent
+    display(trader_id, response);
+    return;
   } else {
-    return {{"success", false}, {"error", "Invalid message type"}};
+    response = "Invalid message type";
+    return;
   }
 
   display();
 
-  return {{"success", true}, {"message", "Order processed"}};
+  response = "Order processed";
+  return;
 }
 
 void order_book::add_order(const Order &order) {
@@ -56,16 +66,19 @@ void order_book::add_order(const Order &order) {
   execute_orders();
 }
 
-void order_book::cancel_order(int id) {
+bool order_book::cancel_order(int id, std::string &trader_id) {
   for (auto &bid : bids) {
     for (auto i = bid.second.begin(); i != bid.second.end(); ++i) {
       if (i->id == id) {
+        if (i->trader_id.compare(trader_id) != 0) {
+          return false;
+        }
         bid.second.erase(i);
         std::cout << "Order " << id << " cancelled\n";
         if (bid.second.empty()) {
           bids.erase(bid.first);
         }
-        return;
+        return true;
       }
     }
   }
@@ -73,18 +86,22 @@ void order_book::cancel_order(int id) {
   for (auto &ask : asks) {
     for (auto i = ask.second.begin(); i != ask.second.end(); ++i) {
       if (i->id == id) {
+        if (i->trader_id.compare(trader_id) != 0) {
+          return false;
+        }
         ask.second.erase(i);
         if (ask.second.empty()) {
           asks.erase(ask.first);
         }
-        return;
+        return true;
       }
     }
   }
+  return false;
 }
 
 void order_book::display() {
-  std::cout << "Bids:\n";
+  std::cout << "\nBids:\n";
   for (const auto &bid : bids) {
     for (const auto &order : bid.second) {
       std::cout << "Price " << bid.first << " Quantity " << order.quantity
@@ -98,6 +115,28 @@ void order_book::display() {
       std::cout << "Price " << ask.first << " Quantity " << order.quantity
                 << " Time " << order.timestamp << " Trader " << order.trader_id
                 << "\n";
+    }
+  }
+}
+
+void order_book::display(std::string &trader_id, std::string &out) {
+  out.append("Bids:\n");
+  for (const auto &bid : bids) {
+    for (const auto &order : bid.second) {
+      if (order.trader_id.compare(trader_id) == 0) {
+        out.append(std::format("Price {} Quantity {} Time {}\n", bid.first,
+                               order.quantity, order.timestamp));
+      }
+    }
+  }
+
+  out.append("Asks:\n");
+  for (const auto &ask : asks) {
+    for (const auto &order : ask.second) {
+      if (order.trader_id.compare(trader_id) == 0) {
+        out.append(std::format("Price {} Quantity {} Time {}\n", ask.first,
+                               order.quantity, order.timestamp));
+      }
     }
   }
 }

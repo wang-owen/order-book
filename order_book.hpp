@@ -6,15 +6,15 @@
 #include <deque>
 #include <map>
 #include <mutex>
-#include <unordered_map>
 
 class order_book {
 public:
-  std::unordered_map<std::string, std::variant<bool, std::string>>
-  process_message(const std::string &message, std::string trader_id);
+  void process_message(const std::string &message, std::string &trader_id,
+                       std::string &response);
   void add_order(const Order &order);
-  void cancel_order(int id);
+  bool cancel_order(int id, std::string &trader_id);
   void display();
+  void display(std::string &trader_id, std::string &out);
 
   int num_orders() const;
 
